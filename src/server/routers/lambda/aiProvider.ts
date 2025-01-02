@@ -39,7 +39,6 @@ export const aiProviderRouter = router({
   createAiProvider: aiProviderProcedure
     .input(CreateAiProviderSchema)
     .mutation(async ({ input, ctx }) => {
-      console.log(input);
       const data = await ctx.aiProviderModel.create(input, ctx.gateKeeper.encrypt);
 
       return data?.id;
@@ -74,10 +73,6 @@ export const aiProviderRouter = router({
     .mutation(async ({ input, ctx }) => {
       return ctx.aiProviderModel.delete(input.id);
     }),
-
-  removeAllAiProviders: aiProviderProcedure.mutation(async ({ ctx }) => {
-    return ctx.aiProviderModel.deleteAll();
-  }),
 
   toggleProviderEnabled: aiProviderProcedure
     .input(
