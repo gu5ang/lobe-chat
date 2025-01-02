@@ -1,5 +1,6 @@
 import { isProviderDisableBroswerRequest } from '@/config/modelProviders';
 import { AIProviderStoreState } from '@/store/aiInfra/initialState';
+import { AiProviderRuntimeConfig } from '@/types/aiProvider';
 import { GlobalLLMProviderKey } from '@/types/user/settings';
 
 // List
@@ -72,8 +73,16 @@ const isProviderFetchOnClient =
 const providerKeyVaults = (provider: string | undefined) => (s: AIProviderStoreState) => {
   if (!provider) return undefined;
 
-  return s.aiProviderKeyVaults[provider];
+  return s.aiProviderRuntimeConfig?.[provider]?.keyVaults;
 };
+
+const providerConfigById =
+  (id: string) =>
+  (s: AIProviderStoreState): AiProviderRuntimeConfig | undefined => {
+    if (!id) return undefined;
+
+    return s.aiProviderRuntimeConfig?.[id];
+  };
 
 export const aiProviderSelectors = {
   activeProviderConfig,
@@ -85,5 +94,6 @@ export const aiProviderSelectors = {
   isProviderEnabled,
   isProviderFetchOnClient,
   isProviderLoading,
+  providerConfigById,
   providerKeyVaults,
 };

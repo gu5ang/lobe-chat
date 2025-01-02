@@ -18,17 +18,19 @@ import {
   UpdateAiProviderParams,
 } from '@/types/aiProvider';
 
-const FETCH_AI_PROVIDER_LIST_KEY = 'FETCH_AI_PROVIDER';
-const FETCH_AI_PROVIDER_ITEM_KEY = 'FETCH_AI_PROVIDER_ITEM';
-const FETCH_ENABLED_AI_PROVIDER_KEY_VAULTS_KEY = 'FETCH_ENABLED_AI_PROVIDER_KEY_VAULTS';
+enum AiProviderSwrKey {
+  fetchAiProviderItem = 'FETCH_AI_PROVIDER_ITEM',
+  fetchAiProviderList = 'FETCH_AI_PROVIDER',
+  fetchAiProviderRuntimeState = 'FETCH_AI_PROVIDER_RUNTIME_STATE',
+}
 
 export interface AiProviderAction {
   createNewAiProvider: (params: CreateAiProviderParams) => Promise<void>;
   deleteAiProvider: (id: string) => Promise<void>;
   internal_toggleAiProviderLoading: (id: string, loading: boolean) => void;
   refreshAiProviderDetail: () => Promise<void>;
-  refreshAiProviderKeyVaults: () => Promise<void>;
   refreshAiProviderList: () => Promise<void>;
+  refreshAiProviderRuntimeState: () => Promise<void>;
   removeAiProvider: (id: string) => Promise<void>;
   toggleProviderEnabled: (id: string, enabled: boolean) => Promise<void>;
   updateAiProvider: (id: string, value: UpdateAiProviderParams) => Promise<void>;
@@ -41,7 +43,7 @@ export interface AiProviderAction {
    * init provider keyVaults and user enabled model list
    * @param isLoginOnInit
    */
-  useInitAiProviderKeyVaults: (
+  useFetchAiProviderRuntimeState: (
     isLoginOnInit: boolean | undefined,
   ) => SWRResponse<AiProviderInitState | undefined>;
 }
@@ -73,14 +75,15 @@ export const createAiProviderSlice: StateCreator<
     );
   },
   refreshAiProviderDetail: async () => {
-    await mutate([FETCH_AI_PROVIDER_ITEM_KEY, get().activeAiProvider]);
-    await get().refreshAiProviderKeyVaults();
-  },
-  refreshAiProviderKeyVaults: async () => {
-    await mutate(FETCH_ENABLED_AI_PROVIDER_KEY_VAULTS_KEY);
+    await mutate([AiProviderSwrKey.fetchAiProviderItem, get().activeAiProvider]);
+    await get().refreshAiProviderRuntimeState();
   },
   refreshAiProviderList: async () => {
-    await mutate(FETCH_AI_PROVIDER_LIST_KEY);
+    await mutate(AiProviderSwrKey.fetchAiProviderList);
+    await get().refreshAiProviderRuntimeState();
+  },
+  refreshAiProviderRuntimeState: async () => {
+    await mutate(AiProviderSwrKey.fetchAiProviderRuntimeState);
   },
   removeAiProvider: async (id) => {
     await aiProviderService.deleteAiProvider(id);
@@ -118,7 +121,7 @@ export const createAiProviderSlice: StateCreator<
   },
   useFetchAiProviderItem: (id) =>
     useClientDataSWR<AiProviderDetailItem | undefined>(
-      [FETCH_AI_PROVIDER_ITEM_KEY, id],
+      [AiProviderSwrKey.fetchAiProviderItem, id],
       () => aiProviderService.getAiProviderById(id),
       {
         onSuccess: (data) => {
@@ -130,7 +133,7 @@ export const createAiProviderSlice: StateCreator<
     ),
   useFetchAiProviderList: () =>
     useClientDataSWR<AiProviderListItem[]>(
-      FETCH_AI_PROVIDER_LIST_KEY,
+      AiProviderSwrKey.fetchAiProviderList,
       () => aiProviderService.getAiProviderList(),
       {
         fallbackData: [],
@@ -149,10 +152,10 @@ export const createAiProviderSlice: StateCreator<
       },
     ),
 
-  useInitAiProviderKeyVaults: (isLoginOnInit) =>
+  useFetchAiProviderRuntimeState: (isLoginOnInit) =>
     useClientDataSWR<AiProviderInitState | undefined>(
-      isLoginOnInit && !isDeprecatedEdition ? [FETCH_ENABLED_AI_PROVIDER_KEY_VAULTS_KEY] : null,
-      () => aiProviderService.initAiProvidersState(),
+      isLoginOnInit && !isDeprecatedEdition ? AiProviderSwrKey.fetchAiProviderRuntimeState : null,
+      () => aiProviderService.getAiProviderRuntimeState(),
       {
         onSuccess: (data) => {
           if (!data) return;
@@ -177,11 +180,9 @@ export const createAiProviderSlice: StateCreator<
             name: provider.name || provider.id,
           }));
 
-          console.log(enabledChatModelList);
-
           set(
             {
-              aiProviderKeyVaults: data.keyVaults,
+              aiProviderRuntimeConfig: data.runtimeConfig,
               enabledAiModels: data.enabledAiModels,
               enabledAiProviders: data.enabledAiProviders,
               enabledChatModelList,

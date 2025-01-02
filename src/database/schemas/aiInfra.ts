@@ -17,6 +17,7 @@ export const aiProviders = pgTable(
 
     sort: integer('sort'),
     enabled: boolean('enabled'),
+    fetchOnClient: boolean('fetch_on_client'),
     checkModel: text('check_model'),
     logo: text('logo'),
     description: text('description'),

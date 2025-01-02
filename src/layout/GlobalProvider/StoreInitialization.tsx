@@ -36,7 +36,7 @@ const StoreInitialization = memo(() => {
   const useInitSystemStatus = useGlobalStore((s) => s.useInitSystemStatus);
 
   const useInitAgentStore = useAgentStore((s) => s.useInitAgentStore);
-  const useInitAiProviderKeyVaults = useAiInfraStore((s) => s.useInitAiProviderKeyVaults);
+  const useInitAiProviderKeyVaults = useAiInfraStore((s) => s.useFetchAiProviderRuntimeState);
 
   // init the system preference
   useInitSystemStatus();

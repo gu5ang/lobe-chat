@@ -56,16 +56,18 @@ export const aiProviderRouter = router({
     return await ctx.aiInfraRepos.getAiProviderList();
   }),
 
-  initAiProvidersState: aiProviderProcedure.query(async ({ ctx }): Promise<AiProviderInitState> => {
-    const keyVaults = await ctx.aiProviderModel.getAiProviderKeyVaults(
-      KeyVaultsGateKeeper.getUserKeyVaults,
-    );
-    const enabledAiProviders = await ctx.aiInfraRepos.getEnabledProviderList();
+  getAiProviderRuntimeState: aiProviderProcedure.query(
+    async ({ ctx }): Promise<AiProviderInitState> => {
+      const runtimeConfig = await ctx.aiProviderModel.getAiProviderRuntimeConfig(
+        KeyVaultsGateKeeper.getUserKeyVaults,
+      );
+      const enabledAiProviders = await ctx.aiInfraRepos.getEnabledProviderList();
 
-    const enabledAiModels = await ctx.aiInfraRepos.getEnabledModels();
+      const enabledAiModels = await ctx.aiInfraRepos.getEnabledModels();
 
-    return { enabledAiModels, enabledAiProviders, keyVaults };
-  }),
+      return { enabledAiModels, enabledAiProviders, runtimeConfig };
+    },
+  ),
 
   removeAiProvider: aiProviderProcedure
     .input(z.object({ id: z.string() }))

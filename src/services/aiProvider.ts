@@ -39,8 +39,8 @@ class AiProviderService {
     return lambdaClient.aiProvider.removeAiProvider.mutate({ id });
   };
 
-  initAiProvidersState = async (): Promise<AiProviderInitState> => {
-    return lambdaClient.aiProvider.initAiProvidersState.query();
+  getAiProviderRuntimeState = async (): Promise<AiProviderInitState> => {
+    return lambdaClient.aiProvider.getAiProviderRuntimeState.query();
   };
 }
 

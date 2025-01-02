@@ -167,7 +167,7 @@ export type UpdateAiProviderParams = z.infer<typeof UpdateAiProviderSchema>;
 
 export const UpdateAiProviderConfigSchema = z.object({
   checkModel: z.string().optional(),
-  fetchOnClient: z.boolean().optional(),
+  fetchOnClient: z.boolean().nullable().optional(),
   keyVaults: z.object({}).passthrough().optional(),
 });
 
@@ -195,8 +195,14 @@ export interface EnabledAiModel {
   type: AiModelType;
 }
 
+export interface AiProviderRuntimeConfig {
+  fetchOnClient?: boolean;
+  keyVaults: Record<string, object>;
+  settings: AiProviderSettings;
+}
+
 export interface AiProviderInitState {
   enabledAiModels: EnabledAiModel[];
   enabledAiProviders: EnabledProvider[];
-  keyVaults: Record<string, object>;
+  runtimeConfig: Record<string, AiProviderRuntimeConfig>;
 }

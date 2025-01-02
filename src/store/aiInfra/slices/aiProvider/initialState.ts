@@ -2,6 +2,7 @@ import { EnabledProviderWithModels } from '@/types/aiModel';
 import {
   AiProviderDetailItem,
   AiProviderListItem,
+  AiProviderRuntimeConfig,
   EnabledAiModel,
   EnabledProvider,
 } from '@/types/aiProvider';
@@ -10,9 +11,9 @@ export interface AIProviderState {
   activeAiProvider?: string;
   activeProviderModelList: any[];
   aiProviderDetail?: AiProviderDetailItem | null;
-  aiProviderKeyVaults: Record<string, object>;
   aiProviderList: AiProviderListItem[];
   aiProviderLoadingIds: string[];
+  aiProviderRuntimeConfig: Record<string, AiProviderRuntimeConfig>;
   enabledAiModels?: EnabledAiModel[];
   enabledAiProviders?: EnabledProvider[];
   // used for select
@@ -23,9 +24,9 @@ export interface AIProviderState {
 
 export const initialAIProviderState: AIProviderState = {
   activeProviderModelList: [],
-  aiProviderKeyVaults: {},
   aiProviderList: [],
   aiProviderLoadingIds: [],
+  aiProviderRuntimeConfig: {},
   initAiProviderList: false,
   providerSearchKeyword: '',
 };

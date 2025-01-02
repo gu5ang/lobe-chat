@@ -90,23 +90,27 @@ interface AuthParams {
   provider?: string;
 }
 
+export const createPayloadWithKeyVaults = (provider: string) => {
+  let keyVaults = {};
+
+  // TODO: remove this condition in V2.0
+  if (isDeprecatedEdition) {
+    keyVaults = keyVaultsConfigSelectors.getVaultByProvider(provider as any)(
+      useUserStore.getState(),
+    );
+  } else {
+    keyVaults = aiProviderSelectors.providerKeyVaults(provider)(useAiInfraStore.getState()) || {};
+  }
+
+  return getProviderAuthPayload(provider, keyVaults);
+};
+
 // eslint-disable-next-line no-undef
 export const createHeaderWithAuth = async (params?: AuthParams): Promise<HeadersInit> => {
   let payload = params?.payload || {};
 
   if (params?.provider) {
-    let keyVaults = {};
-
-    if (isDeprecatedEdition) {
-      keyVaults = keyVaultsConfigSelectors.getVaultByProvider(params.provider as any)(
-        useUserStore.getState(),
-      );
-    } else {
-      keyVaults =
-        aiProviderSelectors.providerKeyVaults(params?.provider)(useAiInfraStore.getState()) || {};
-    }
-
-    payload = { ...payload, ...getProviderAuthPayload(params?.provider, keyVaults) };
+    payload = { ...payload, ...createPayloadWithKeyVaults(params?.provider) };
   }
 
   const token = await createAuthTokenWithPayload(payload);

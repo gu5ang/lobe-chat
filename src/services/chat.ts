@@ -7,7 +7,7 @@ import { INBOX_GUIDE_SYSTEMROLE } from '@/const/guide';
 import { INBOX_SESSION_ID } from '@/const/session';
 import { DEFAULT_AGENT_CONFIG } from '@/const/settings';
 import { TracePayload, TraceTagMap } from '@/const/trace';
-import { isServerMode } from '@/const/version';
+import { isDeprecatedEdition, isServerMode } from '@/const/version';
 import {
   AgentRuntime,
   AgentRuntimeError,
@@ -23,6 +23,7 @@ import { useToolStore } from '@/store/tool';
 import { pluginSelectors, toolSelectors } from '@/store/tool/selectors';
 import { useUserStore } from '@/store/user';
 import {
+  modelConfigSelectors,
   modelProviderSelectors,
   preferenceSelectors,
   userProfileSelectors,
@@ -36,7 +37,7 @@ import { FetchSSEOptions, fetchSSE, getMessageError } from '@/utils/fetch';
 import { genToolCallingName } from '@/utils/toolCall';
 import { createTraceHeader, getTraceId } from '@/utils/trace';
 
-import { createHeaderWithAuth, getProviderAuthPayload } from './_auth';
+import { createHeaderWithAuth, createPayloadWithKeyVaults } from './_auth';
 import { API_ENDPOINTS } from './_url';
 
 interface FetchOptions extends FetchSSEOptions {
@@ -83,7 +84,7 @@ interface CreateAssistantMessageStream extends FetchSSEOptions {
  */
 export function initializeWithClientStore(provider: string, payload: any) {
   // add auth payload
-  const providerAuthPayload = getProviderAuthPayload(provider, payload);
+  const providerAuthPayload = { ...payload, ...createPayloadWithKeyVaults(provider) };
   const commonOptions = {
     // Some provider base openai sdk, so enable it run on browser
     dangerouslyAllowBrowser: true,
@@ -261,9 +262,17 @@ class ChatService {
     /**
      * Use browser agent runtime
      */
-    const enableFetchOnClient = aiProviderSelectors.isProviderFetchOnClient(provider)(
-      useAiInfraStore.getState(),
-    );
+    let enableFetchOnClient: boolean;
+    // TODO: remove this condition in V2.0
+    if (isDeprecatedEdition) {
+      enableFetchOnClient = modelConfigSelectors.isProviderFetchOnClient(provider)(
+        useUserStore.getState(),
+      );
+    } else {
+      enableFetchOnClient = aiProviderSelectors.isProviderFetchOnClient(provider)(
+        useAiInfraStore.getState(),
+      );
+    }
 
     let fetcher: typeof fetch | undefined = undefined;
 
@@ -302,7 +311,19 @@ class ChatService {
 
     const providerConfig = DEFAULT_MODEL_PROVIDER_LIST.find((item) => item.id === provider);
 
-    return fetchSSE(API_ENDPOINTS.chat(provider), {
+    let sdkType = provider;
+    const isBulitin = Object.values(ModelProvider).includes(provider as any);
+
+    // remove `!isDeprecatedEdition` condition in V2.0
+    if (!isDeprecatedEdition && !isBulitin) {
+      const providerConfig = aiProviderSelectors.providerConfigById(provider)(
+        useAiInfraStore.getState(),
+      );
+
+      sdkType = providerConfig?.settings.sdkType || 'openai';
+    }
+
+    return fetchSSE(API_ENDPOINTS.chat(sdkType), {
       body: JSON.stringify(payload),
       fetcher: fetcher,
       headers,

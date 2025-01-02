@@ -5,6 +5,7 @@ import { ModelProvider } from '@/libs/agent-runtime';
 import {
   AiProviderDetailItem,
   AiProviderListItem,
+  AiProviderRuntimeConfig,
   CreateAiProviderParams,
   UpdateAiProviderConfigParams,
 } from '@/types/aiProvider';
@@ -170,6 +171,7 @@ export class AiProviderModel {
       .select({
         checkModel: aiProviders.checkModel,
         enabled: aiProviders.enabled,
+        fetchOnClient: aiProviders.fetchOnClient,
         id: aiProviders.id,
         keyVaults: aiProviders.keyVaults,
         logo: aiProviders.logo,
@@ -203,23 +205,29 @@ export class AiProviderModel {
     return { ...result, keyVaults } as AiProviderDetailItem;
   };
 
-  getAiProviderKeyVaults = async (decryptor: DecryptUserKeyVaults) => {
+  getAiProviderRuntimeConfig = async (decryptor: DecryptUserKeyVaults) => {
     const result = await this.db
       .select({
+        fetchOnClient: aiProviders.fetchOnClient,
         id: aiProviders.id,
         keyVaults: aiProviders.keyVaults,
+        settings: aiProviders.settings,
       })
       .from(aiProviders)
       .where(and(eq(aiProviders.userId, this.userId)));
 
     const decrypt = decryptor ?? JSON.parse;
-    let providerKeyVaults: Record<string, object> = {};
+    let runtimeConfig: Record<string, AiProviderRuntimeConfig> = {};
 
     for (const item of result) {
-      providerKeyVaults[item.id] = await decrypt(item.keyVaults);
+      runtimeConfig[item.id] = {
+        fetchOnClient: typeof item.fetchOnClient === 'boolean' ? item.fetchOnClient : undefined,
+        keyVaults: !!item.keyVaults ? await decrypt(item.keyVaults) : {},
+        settings: item.settings || {},
+      };
     }
 
-    return providerKeyVaults;
+    return runtimeConfig;
   };
 
   private isBuiltInProvider = (id: string) => Object.values(ModelProvider).includes(id as any);
