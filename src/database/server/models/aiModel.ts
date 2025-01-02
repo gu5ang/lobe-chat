@@ -174,16 +174,41 @@ export class AiModelModel {
   };
 
   batchToggleAiModels = async (providerId: string, models: string[], enabled: boolean) => {
-    return this.db
-      .update(aiModels)
-      .set({ enabled })
-      .where(
-        and(
-          eq(aiModels.providerId, providerId),
-          inArray(aiModels.id, models),
-          eq(aiModels.userId, this.userId),
-        ),
-      );
+    return this.db.transaction(async (trx) => {
+      // 1. insert models that are not in the db
+      const insertedRecords = await trx
+        .insert(aiModels)
+        .values(
+          models.map((i) => ({
+            enabled,
+            id: i,
+            providerId,
+            // if the model is not in the db, it's a builtin model
+            source: AiModelSourceEnum.Builtin,
+            updatedAt: new Date(),
+            userId: this.userId,
+          })),
+        )
+        .onConflictDoNothing({
+          target: [aiModels.id, aiModels.userId, aiModels.providerId],
+        })
+        .returning();
+
+      // 2. update models that are in the db
+      const insertedIds = new Set(insertedRecords.map((r) => r.id));
+      const recordsToUpdate = models.filter((r) => !insertedIds.has(r));
+
+      await trx
+        .update(aiModels)
+        .set({ enabled })
+        .where(
+          and(
+            eq(aiModels.providerId, providerId),
+            inArray(aiModels.id, recordsToUpdate),
+            eq(aiModels.userId, this.userId),
+          ),
+        );
+    });
   };
 
   clearRemoteModels(providerId: string) {
