@@ -2,7 +2,7 @@ import { uniqBy } from 'lodash-es';
 import { SWRResponse, mutate } from 'swr';
 import { StateCreator } from 'zustand/vanilla';
 
-import { isDeprecatedEdition } from '@/const/version';
+import { isServerMode } from '@/const/version';
 import { useClientDataSWR } from '@/libs/swr';
 import { aiProviderService } from '@/services/aiProvider';
 import { AiInfraStore } from '@/store/aiInfra/store';
@@ -154,7 +154,7 @@ export const createAiProviderSlice: StateCreator<
 
   useFetchAiProviderRuntimeState: (isLoginOnInit) =>
     useClientDataSWR<AiProviderInitState | undefined>(
-      isLoginOnInit && !isDeprecatedEdition ? AiProviderSwrKey.fetchAiProviderRuntimeState : null,
+      isLoginOnInit && isServerMode ? AiProviderSwrKey.fetchAiProviderRuntimeState : null,
       () => aiProviderService.getAiProviderRuntimeState(),
       {
         onSuccess: (data) => {

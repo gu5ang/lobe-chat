@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { Flexbox } from 'react-layout-kit';
 
 import { ModelItemRender, ProviderItemRender } from '@/components/ModelSelect';
-import { isDeprecatedEdition } from '@/const/version';
+import { isServerMode } from '@/const/version';
 import { useEnabledChatModels } from '@/hooks/useEnabledChatModels';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useAgentStore } from '@/store/agent';
@@ -76,9 +76,7 @@ const ModelSwitchPanel = memo<PropsWithChildren>(({ children }) => {
               </Flexbox>
             ),
             onClick: () => {
-              router.push(
-                isDeprecatedEdition ? '/settings/llm' : `/settings/provider/${provider.id}`,
-              );
+              router.push(!isServerMode ? '/settings/llm' : `/settings/provider/${provider.id}`);
             },
           },
         ];

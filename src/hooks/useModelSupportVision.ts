@@ -1,4 +1,4 @@
-import { isDeprecatedEdition } from '@/const/version';
+import { isServerMode } from '@/const/version';
 import { aiModelSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useUserStore } from '@/store/user';
 import { modelProviderSelectors } from '@/store/user/selectors';
@@ -8,7 +8,7 @@ export const useModelSupportVision = (model: string) => {
 
   // TODO: remove this in V2.0
   const oldValue = useUserStore(modelProviderSelectors.isModelEnabledVision(model));
-  if (isDeprecatedEdition) return oldValue;
+  if (!isServerMode) return oldValue;
   //
 
   return newValue;
