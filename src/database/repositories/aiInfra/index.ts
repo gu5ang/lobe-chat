@@ -60,6 +60,7 @@ export class AiInfraRepos {
     const list = await this.getAiProviderList();
     return list
       .filter((item) => item.enabled)
+      .sort((a, b) => a.sort! - b.sort!)
       .map((item) => ({ id: item.id, name: item.name, source: item.source }));
   };
 
