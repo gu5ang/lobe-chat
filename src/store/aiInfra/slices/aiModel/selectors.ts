@@ -32,6 +32,21 @@ const isModelLoading = (id: string) => (s: AIProviderStoreState) =>
 const getAiModelById = (id: string) => (s: AIProviderStoreState) =>
   s.aiProviderModelList.find((i) => i.id === id);
 
+const getEnabledModelById = (id: string) => (s: AIProviderStoreState) =>
+  s.enabledAiModels?.find((i) => i.id === id);
+
+const isModelSupportToolUse = (id: string) => (s: AIProviderStoreState) => {
+  const model = getEnabledModelById(id)(s);
+
+  return model?.abilities?.functionCall;
+};
+
+const isModelSupportVision = (id: string) => (s: AIProviderStoreState) => {
+  const model = getEnabledModelById(id)(s);
+
+  return model?.abilities?.vision;
+};
+
 export const aiModelSelectors = {
   disabledAiProviderModelList,
   enabledAiProviderModelList,
@@ -40,5 +55,7 @@ export const aiModelSelectors = {
   hasRemoteModels,
   isModelEnabled,
   isModelLoading,
+  isModelSupportToolUse,
+  isModelSupportVision,
   totalAiProviderModelList,
 };

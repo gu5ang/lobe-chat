@@ -61,6 +61,7 @@ export class AiModelModel {
     const result = await this.db
       .select({
         abilities: aiModels.abilities,
+        config: aiModels.config,
         contextWindowTokens: aiModels.contextWindowTokens,
         description: aiModels.description,
         displayName: aiModels.displayName,
@@ -86,6 +87,7 @@ export class AiModelModel {
     return this.db
       .select({
         abilities: aiModels.abilities,
+        config: aiModels.config,
         contextWindowTokens: aiModels.contextWindowTokens,
         displayName: aiModels.displayName,
         enabled: aiModels.enabled,

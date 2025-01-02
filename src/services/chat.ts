@@ -16,7 +16,7 @@ import {
 } from '@/libs/agent-runtime';
 import { filesPrompts } from '@/prompts/files';
 import { BuiltinSystemRolePrompts } from '@/prompts/systemRole';
-import { aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
+import { aiModelSelectors, aiProviderSelectors, useAiInfraStore } from '@/store/aiInfra';
 import { useSessionStore } from '@/store/session';
 import { sessionMetaSelectors } from '@/store/session/selectors';
 import { useToolStore } from '@/store/tool';
@@ -39,6 +39,47 @@ import { createTraceHeader, getTraceId } from '@/utils/trace';
 
 import { createHeaderWithAuth, createPayloadWithKeyVaults } from './_auth';
 import { API_ENDPOINTS } from './_url';
+
+const isCanUseFC = (model: string) => {
+  // TODO: remove isDeprecatedEdition condition in V2.0
+  if (isDeprecatedEdition) {
+    return modelProviderSelectors.isModelEnabledFunctionCall(model)(useUserStore.getState());
+  }
+
+  return aiModelSelectors.isModelSupportToolUse(model)(useAiInfraStore.getState());
+};
+
+const findAzureDeploymentName = (model: string) => {
+  let deploymentId = model;
+
+  // TODO: remove isDeprecatedEdition condition in V2.0
+  if (isDeprecatedEdition) {
+    const chatModelCards = modelProviderSelectors.getModelCardsById(ModelProvider.Azure)(
+      useUserStore.getState(),
+    );
+
+    const deploymentName = chatModelCards.find((i) => i.id === model)?.deploymentName;
+    if (deploymentName) deploymentId = deploymentName;
+  } else {
+    // find the model by id
+    const modelItem = useAiInfraStore.getState().enabledAiModels?.find((i) => i.id === model);
+
+    if (modelItem && modelItem.config?.deploymentName) {
+      deploymentId = modelItem.config?.deploymentName;
+    }
+  }
+
+  return deploymentId;
+};
+
+const isEnableFetchOnClient = (provider: string) => {
+  // TODO: remove this condition in V2.0
+  if (isDeprecatedEdition) {
+    return modelConfigSelectors.isProviderFetchOnClient(provider)(useUserStore.getState());
+  } else {
+    return aiProviderSelectors.isProviderFetchOnClient(provider)(useAiInfraStore.getState());
+  }
+};
 
 interface FetchOptions extends FetchSSEOptions {
   historySummary?: string;
@@ -201,9 +242,8 @@ class ChatService {
     const filterTools = toolSelectors.enabledSchema(enabledPlugins)(useToolStore.getState());
 
     // check this model can use function call
-    const canUseFC = modelProviderSelectors.isModelEnabledFunctionCall(payload.model)(
-      useUserStore.getState(),
-    );
+    const canUseFC = isCanUseFC(payload.model);
+
     // the rule that model can use tools:
     // 1. tools is not empty
     // 2. model can use function call
@@ -246,12 +286,7 @@ class ChatService {
 
     // if the provider is Azure, get the deployment name as the request model
     if (provider === ModelProvider.Azure) {
-      const chatModelCards = modelProviderSelectors.getModelCardsById(provider)(
-        useUserStore.getState(),
-      );
-
-      const deploymentName = chatModelCards.find((i) => i.id === model)?.deploymentName;
-      if (deploymentName) model = deploymentName;
+      model = findAzureDeploymentName(model);
     }
 
     const payload = merge(
@@ -262,17 +297,7 @@ class ChatService {
     /**
      * Use browser agent runtime
      */
-    let enableFetchOnClient: boolean;
-    // TODO: remove this condition in V2.0
-    if (isDeprecatedEdition) {
-      enableFetchOnClient = modelConfigSelectors.isProviderFetchOnClient(provider)(
-        useUserStore.getState(),
-      );
-    } else {
-      enableFetchOnClient = aiProviderSelectors.isProviderFetchOnClient(provider)(
-        useAiInfraStore.getState(),
-      );
-    }
+    let enableFetchOnClient = isEnableFetchOnClient(provider);
 
     let fetcher: typeof fetch | undefined = undefined;
 
@@ -312,10 +337,10 @@ class ChatService {
     const providerConfig = DEFAULT_MODEL_PROVIDER_LIST.find((item) => item.id === provider);
 
     let sdkType = provider;
-    const isBulitin = Object.values(ModelProvider).includes(provider as any);
+    const isBuiltin = Object.values(ModelProvider).includes(provider as any);
 
-    // remove `!isDeprecatedEdition` condition in V2.0
-    if (!isDeprecatedEdition && !isBulitin) {
+    // TODO: remove `!isDeprecatedEdition` condition in V2.0
+    if (!isDeprecatedEdition && !isBuiltin) {
       const providerConfig = aiProviderSelectors.providerConfigById(provider)(
         useAiInfraStore.getState(),
       );
@@ -488,9 +513,7 @@ class ChatService {
 
       // Inject Tool SystemRole
       const hasTools = tools && tools?.length > 0;
-      const hasFC =
-        hasTools &&
-        modelProviderSelectors.isModelEnabledFunctionCall(model)(useUserStore.getState());
+      const hasFC = hasTools && isCanUseFC(model);
       const toolsSystemRoles =
         hasFC && toolSelectors.enabledSystemRoles(tools)(useToolStore.getState());
 

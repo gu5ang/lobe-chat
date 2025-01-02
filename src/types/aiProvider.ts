@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { AiModelSourceType, AiModelType, ModelAbilities } from '@/types/aiModel';
+import { AiModelConfig, AiModelSourceType, AiModelType, ModelAbilities } from '@/types/aiModel';
 import { SmoothingParams } from '@/types/llm';
 
 export const AiProviderSourceEnum = {
@@ -188,6 +188,7 @@ export interface EnabledProvider {
 
 export interface EnabledAiModel {
   abilities: ModelAbilities;
+  config?: AiModelConfig;
   contextWindowTokens?: number;
   displayName?: string;
   id: string;

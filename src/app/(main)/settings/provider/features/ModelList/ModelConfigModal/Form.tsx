@@ -58,7 +58,7 @@ const ModelConfigForm = memo<ModelConfigFormProps>(
             <Form.Item
               extra={t('llm.customModelCards.modelConfig.azureDeployName.extra')}
               label={t('llm.customModelCards.modelConfig.azureDeployName.title')}
-              name={'deploymentName'}
+              name={['config', 'deploymentName']}
             >
               <Input
                 placeholder={t('llm.customModelCards.modelConfig.azureDeployName.placeholder')}

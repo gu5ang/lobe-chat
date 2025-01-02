@@ -98,6 +98,7 @@ export const createAiModelSlice: StateCreator<
   },
   refreshAiModelList: async () => {
     await mutate([FETCH_AI_PROVIDER_MODEL_LIST_KEY, get().activeAiProvider]);
+    // make refresh provide runtime state async, not block
     get().refreshAiProviderRuntimeState();
   },
   removeAiModel: async (id, providerId) => {
