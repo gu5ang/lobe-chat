@@ -6,7 +6,7 @@
   },
   "dialect": "postgresql",
   "enums": {},
-  "id": "13252538-b630-480e-8665-7bdce8a9e4d1",
+  "id": "c1005309-ebae-4f0b-b6a3-5786f71961db",
   "policies": {},
   "prevId": "d3f128f8-3bb4-44bc-9389-c17cef53ba87",
   "roles": {},
@@ -524,6 +524,12 @@
         },
         "enabled": {
           "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fetch_on_client": {
+          "name": "fetch_on_client",
           "type": "boolean",
           "primaryKey": false,
           "notNull": false

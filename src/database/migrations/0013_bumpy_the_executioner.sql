@@ -27,6 +27,7 @@ CREATE TABLE "ai_providers" (
 	"user_id" text NOT NULL,
 	"sort" integer,
 	"enabled" boolean,
+	"fetch_on_client" boolean,
 	"check_model" text,
 	"logo" text,
 	"description" text,
