@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDBInstance } from '@/database/server/core/dbForTest';
 
-import { NewAiModelItem, aiModels, users } from '../../../schemas';
+import { AiModelSelectItem, NewAiModelItem, aiModels, users } from '../../../schemas';
 import { AiModelModel } from '../aiModel';
 
 let serverDB = await getTestDBInstance();
@@ -152,6 +152,168 @@ describe('AiModelModel', () => {
         contextWindowTokens: 3000,
         userId,
       });
+    });
+  });
+
+  describe('getModelListByProviderId', () => {
+    it('should get model list by provider id', async () => {
+      await aiProviderModel.create({
+        id: 'model1',
+        providerId: 'openai',
+        sort: 1,
+        enabled: true,
+      });
+      await aiProviderModel.create({
+        id: 'model2',
+        providerId: 'openai',
+        sort: 2,
+        enabled: false,
+      });
+
+      const models = await aiProviderModel.getModelListByProviderId('openai');
+      expect(models).toHaveLength(2);
+      expect(models[0].id).toBe('model1');
+      expect(models[1].id).toBe('model2');
+    });
+
+    it('should only return models for specified provider', async () => {
+      await aiProviderModel.create({
+        id: 'model1',
+        providerId: 'openai',
+      });
+      await aiProviderModel.create({
+        id: 'model2',
+        providerId: 'anthropic',
+      });
+
+      const models = await aiProviderModel.getModelListByProviderId('openai');
+      expect(models).toHaveLength(1);
+      expect(models[0].id).toBe('model1');
+    });
+  });
+
+  describe('getEnabledModels', () => {
+    it('should only return enabled models', async () => {
+      await serverDB.insert(aiModels).values([
+        { id: 'model1', providerId: 'openai', enabled: true, source: 'custom', userId },
+        { id: 'model2', providerId: 'openai', enabled: false, source: 'custom', userId },
+      ]);
+
+      const models = await aiProviderModel.getEnabledModels();
+      expect(models).toHaveLength(1);
+      expect(models[0].id).toBe('model1');
+      expect(models[0].enabled).toBe(true);
+    });
+  });
+
+  describe('toggleModelEnabled', () => {
+    it('should toggle model enabled status', async () => {
+      const model = await aiProviderModel.create({
+        id: 'model1',
+        providerId: 'openai',
+        enabled: true,
+      });
+
+      await aiProviderModel.toggleModelEnabled({
+        id: model.id,
+        providerId: 'openai',
+        enabled: false,
+      });
+
+      const updatedModel = await aiProviderModel.findById(model.id);
+      expect(updatedModel?.enabled).toBe(false);
+    });
+  });
+
+  describe('batchUpdateAiModels', () => {
+    it('should insert new models and update existing ones', async () => {
+      // Create an initial model
+      await aiProviderModel.create({
+        id: 'existing-model',
+        providerId: 'openai',
+        displayName: 'Old Name',
+      });
+
+      const models = [
+        {
+          id: 'existing-model',
+          providerId: 'openai',
+          displayName: 'Updated Name',
+        },
+        {
+          id: 'new-model',
+          providerId: 'openai',
+          displayName: 'New Model',
+        },
+      ] as AiModelSelectItem[];
+
+      await aiProviderModel.batchUpdateAiModels('openai', models);
+
+      const allModels = await aiProviderModel.query();
+      expect(allModels).toHaveLength(2);
+      expect(allModels.find((m) => m.id === 'existing-model')?.displayName).toBe('Updated Name');
+      expect(allModels.find((m) => m.id === 'new-model')?.displayName).toBe('New Model');
+    });
+  });
+
+  describe('batchToggleAiModels', () => {
+    it('should toggle multiple models enabled status', async () => {
+      await aiProviderModel.create({
+        id: 'model1',
+        providerId: 'openai',
+        enabled: false,
+      });
+      await aiProviderModel.create({
+        id: 'model2',
+        providerId: 'openai',
+        enabled: false,
+      });
+
+      await aiProviderModel.batchToggleAiModels('openai', ['model1', 'model2'], true);
+
+      const models = await aiProviderModel.query();
+      expect(models.every((m) => m.enabled)).toBe(true);
+    });
+  });
+
+  describe('clearRemoteModels', () => {
+    it('should delete all remote models for a provider', async () => {
+      await serverDB.insert(aiModels).values([
+        { id: 'remote1', providerId: 'openai', source: 'remote', userId },
+        { id: 'custom1', providerId: 'openai', source: 'custom', userId },
+      ]);
+
+      await aiProviderModel.clearRemoteModels('openai');
+
+      const remainingModels = await aiProviderModel.query();
+      expect(remainingModels).toHaveLength(1);
+      expect(remainingModels[0].id).toBe('custom1');
+    });
+  });
+
+  describe('updateModelsOrder', () => {
+    it('should update the sort order of models', async () => {
+      await aiProviderModel.create({
+        id: 'model1',
+        providerId: 'openai',
+        sort: 1,
+      });
+      await aiProviderModel.create({
+        id: 'model2',
+        providerId: 'openai',
+        sort: 2,
+      });
+
+      const sortMap = [
+        { id: 'model1', sort: 2 },
+        { id: 'model2', sort: 1 },
+      ];
+
+      await aiProviderModel.updateModelsOrder('openai', sortMap);
+
+      const models = await aiProviderModel.getModelListByProviderId('openai');
+      expect(models[0].id).toBe('model2');
+      expect(models[1].id).toBe('model1');
     });
   });
 });
