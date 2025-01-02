@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { eq } from 'drizzle-orm/expressions';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { getTestDBInstance } from '@/database/server/core/dbForTest';
+import { ModelProvider } from '@/libs/agent-runtime';
 
-import { NewAiProviderItem, aiProviders, users } from '../../../schemas';
+import { aiProviders, users } from '../../../schemas';
 import { AiProviderModel } from '../aiProvider';
 
 let serverDB = await getTestDBInstance();
@@ -169,6 +170,204 @@ describe('AiProviderModel', () => {
 
       expect(updatedGroup1?.sort).toBe(3);
       expect(updatedGroup2?.sort).toBe(4);
+    });
+  });
+
+  describe('getAiProviderList', () => {
+    it('should return a list of ai providers with selected fields', async () => {
+      await serverDB.insert(aiProviders).values({
+        description: 'Test description',
+        enabled: true,
+        id: 'aihubmix',
+        logo: 'test-logo',
+        name: 'AiHubMix',
+        sort: 1,
+        source: 'custom',
+        userId,
+      });
+
+      const list = await aiProviderModel.getAiProviderList();
+      expect(list).toHaveLength(1);
+      expect(list[0]).toMatchObject({
+        description: 'Test description',
+        enabled: true,
+        id: 'aihubmix',
+        logo: 'test-logo',
+        name: 'AiHubMix',
+        sort: 1,
+        source: 'custom',
+      });
+    });
+  });
+
+  describe('updateConfig', () => {
+    it('should update provider config with encryption', async () => {
+      const providerId = 'aihubmix';
+      await serverDB.insert(aiProviders).values({
+        id: providerId,
+        keyVaults: JSON.stringify({ key: 'value' }),
+        name: 'AiHubMix',
+        source: 'custom',
+        userId,
+      });
+
+      const mockEncryptor = vi.fn().mockResolvedValue('encrypted-data');
+      await aiProviderModel.updateConfig(
+        providerId,
+        {
+          keyVaults: { newKey: 'newValue' },
+          fetchOnClient: true,
+        },
+        mockEncryptor,
+      );
+
+      const updated = await serverDB.query.aiProviders.findFirst({
+        where: eq(aiProviders.id, providerId),
+      });
+
+      expect(mockEncryptor).toHaveBeenCalledWith(JSON.stringify({ newKey: 'newValue' }));
+      expect(updated?.keyVaults).toBe('encrypted-data');
+      expect(updated?.fetchOnClient).toBeTruthy();
+    });
+
+    it('should update provider config without encryption', async () => {
+      const providerId = 'aihubmix';
+      await serverDB.insert(aiProviders).values({
+        id: providerId,
+        keyVaults: JSON.stringify({ key: 'value' }),
+        name: 'AiHubMix',
+        source: 'custom',
+        userId,
+      });
+
+      await aiProviderModel.updateConfig(providerId, {
+        keyVaults: { newKey: 'newValue' },
+      });
+
+      const updated = await serverDB.query.aiProviders.findFirst({
+        where: eq(aiProviders.id, providerId),
+      });
+
+      expect(updated?.keyVaults).toBe(JSON.stringify({ newKey: 'newValue' }));
+    });
+  });
+
+  describe('toggleProviderEnabled', () => {
+    it('should toggle builtin provider enabled status', async () => {
+      const builtinId = ModelProvider.OpenAI;
+      await aiProviderModel.toggleProviderEnabled(builtinId, true);
+
+      const provider = await serverDB.query.aiProviders.findFirst({
+        where: eq(aiProviders.id, builtinId),
+      });
+
+      expect(provider?.enabled).toBe(true);
+      expect(provider?.source).toBe('builtin');
+    });
+
+    it('should toggle custom provider enabled status', async () => {
+      const customId = 'custom-provider';
+      await aiProviderModel.toggleProviderEnabled(customId, false);
+
+      const provider = await serverDB.query.aiProviders.findFirst({
+        where: eq(aiProviders.id, customId),
+      });
+
+      expect(provider?.enabled).toBe(false);
+      expect(provider?.source).toBe('custom');
+    });
+  });
+
+  describe('getAiProviderById', () => {
+    it('should get provider details with decryption', async () => {
+      const providerId = 'aihubmix';
+      const mockDecryptor = vi.fn().mockResolvedValue({ decryptedKey: 'value' });
+
+      await serverDB.insert(aiProviders).values({
+        id: providerId,
+        keyVaults: JSON.stringify({ key: 'value' }),
+        name: 'AiHubMix',
+        settings: { setting1: true } as any,
+        source: 'custom',
+        userId,
+      });
+
+      const provider = await aiProviderModel.getAiProviderById(providerId, mockDecryptor);
+
+      expect(provider).toBeDefined();
+      expect(provider?.keyVaults).toEqual({ decryptedKey: 'value' });
+    });
+
+    it('should handle non-existent provider for builtin provider', async () => {
+      const builtinId = ModelProvider.OpenAI;
+      const provider = await aiProviderModel.getAiProviderById(builtinId, (text) =>
+        JSON.parse(text as string),
+      );
+
+      expect(provider).toBeDefined();
+      expect(provider?.source).toBe('builtin');
+    });
+
+    it('should return undefined for non-existent custom provider', async () => {
+      const provider = await aiProviderModel.getAiProviderById('non-existent', (text) =>
+        JSON.parse(text as string),
+      );
+
+      expect(provider).toBeUndefined();
+    });
+
+    it('should handle null keyVaults', async () => {
+      const providerId = 'aihubmix';
+      await serverDB.insert(aiProviders).values({
+        id: providerId,
+        name: 'AiHubMix',
+        source: 'custom',
+        userId,
+      });
+
+      const provider = await aiProviderModel.getAiProviderById(providerId, (text) =>
+        JSON.parse(text as string),
+      );
+
+      expect(provider?.keyVaults).toEqual({});
+    });
+  });
+
+  describe('getAiProviderRuntimeConfig', () => {
+    it('should get runtime config for all providers', async () => {
+      const mockDecryptor = vi.fn().mockResolvedValue({ decryptedKey: 'value' });
+
+      await serverDB.insert(aiProviders).values([
+        {
+          fetchOnClient: true,
+          id: 'provider1',
+          keyVaults: JSON.stringify({ key: 'value' }),
+          name: 'Provider 1',
+          settings: { setting1: true } as any,
+          source: 'custom',
+          userId,
+        },
+        {
+          id: 'provider2',
+          name: 'Provider 2',
+          source: 'custom',
+          userId,
+        },
+      ]);
+
+      const config = await aiProviderModel.getAiProviderRuntimeConfig(mockDecryptor);
+
+      expect(config.provider1).toEqual({
+        fetchOnClient: true,
+        keyVaults: { decryptedKey: 'value' },
+        settings: { setting1: true },
+      });
+
+      expect(config.provider2).toEqual({
+        fetchOnClient: undefined,
+        keyVaults: {},
+        settings: {},
+      });
     });
   });
 });
