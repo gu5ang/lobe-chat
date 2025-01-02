@@ -78,29 +78,6 @@ export const aiModelRouter = router({
       return ctx.aiModelModel.findById(input.id);
     }),
 
-  // getAiModelList: aiModelProcedure.query(async ({ ctx }) => {
-  //   const { languageModel } = getServerGlobalConfig();
-  //   const userSettings = await ctx.userModel.getUserSettings();
-  //   const mergedLanguageModel = merge(languageModel, userSettings?.languageModel || {}) as Record<
-  //     string,
-  //     ProviderConfig
-  //   >;
-  //
-  //   const userProviders = await ctx.aiModelModel.getAiModelList();
-  //
-  //   const builtinProviders = DEFAULT_MODEL_PROVIDER_LIST.map((item) => ({
-  //     description: item.description,
-  //     enabled:
-  //       userProviders.some((provider) => provider.id === item.id && provider.enabled) ||
-  //       mergedLanguageModel[item.id]?.enabled,
-  //     id: item.id,
-  //     name: item.name,
-  //     source: 'builtin',
-  //   })) as AiModelListItem[];
-  //
-  //   return uniqBy([...builtinProviders, ...userProviders], 'id');
-  // }),
-
   getAiProviderModelList: aiModelProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ ctx, input }): Promise<AiProviderModelListItem[]> => {
@@ -112,10 +89,6 @@ export const aiModelRouter = router({
     .mutation(async ({ input, ctx }) => {
       return ctx.aiModelModel.delete(input.id, input.providerId);
     }),
-
-  removeAllAiModels: aiModelProcedure.mutation(async ({ ctx }) => {
-    return ctx.aiModelModel.deleteAll();
-  }),
 
   toggleModelEnabled: aiModelProcedure
     .input(ToggleAiModelEnableSchema)

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm/expressions';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { getTestDBInstance } from '@/database/server/core/dbForTest';
+import { AiProviderModelListItem } from '@/types/aiModel';
 
 import { AiModelSelectItem, NewAiModelItem, aiModels, users } from '../../../schemas';
 import { AiModelModel } from '../aiModel';
@@ -237,15 +238,13 @@ describe('AiModelModel', () => {
       const models = [
         {
           id: 'existing-model',
-          providerId: 'openai',
           displayName: 'Updated Name',
         },
         {
           id: 'new-model',
-          providerId: 'openai',
           displayName: 'New Model',
         },
-      ] as AiModelSelectItem[];
+      ] as AiProviderModelListItem[];
 
       await aiProviderModel.batchUpdateAiModels('openai', models);
 

@@ -126,10 +126,9 @@ export class AiModelModel {
       });
   };
 
-  batchUpdateAiModels = async (providerId: string, models: AiModelSelectItem[]) => {
+  batchUpdateAiModels = async (providerId: string, models: AiProviderModelListItem[]) => {
     return this.db.transaction(async (trx) => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const records = models.map(({ id, providerId: _, ...model }) => ({
+      const records = models.map(({ id, ...model }) => ({
         ...model,
         id,
         providerId,
